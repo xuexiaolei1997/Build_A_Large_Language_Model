@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn as nn
 
 
 def text_to_token_ids(text, tokenizer):
