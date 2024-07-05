@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import matplotlib.pyplot as plt
 
 
 def text_to_token_ids(text, tokenizer):
@@ -164,3 +165,45 @@ def load_weights_into_gpt(gpt, model):
     assign(gpt.final_norm.shift, model.ln_f.bias)
     assign(gpt.out_head.weight, model.wte.weight)
 
+
+
+def calc_accuracy_loader(data_loader, model, device, num_batches=None):
+    model.eval()
+    correct_predictions, num_examples = 0, 0
+
+    if num_batches is None:
+        num_batches = len(data_loader)
+    else:
+        num_batches = min(num_batches, len(data_loader))
+    for i, (input_batch, target_batch) in enumerate(data_loader):
+        if i < num_batches:
+            input_batch, target_batch = input_batch.to(device), target_batch.to(device)
+
+            with torch.no_grad():
+                logits = model(input_batch)[:, -1, :]  # Logits of last output token·
+            predicted_labels = torch.argmax(logits, dim=-1)
+
+            num_examples += predicted_labels.shape[0]
+            correct_predictions += (predicted_labels == target_batch).sum().item()
+        else:
+            break
+    return correct_predictions / num_examples
+
+
+def plot_values(epochs_seen, examples_seen, train_values, val_values, label="loss"):
+    fig, ax1 = plt.subplots(figsize=(5, 3))
+
+    # Plot training and validation loss against epochs
+    ax1.plot(epochs_seen, train_values, label=f"Training {label}")
+    ax1.plot(epochs_seen, val_values, linestyle="-.", label=f"Validation {label}")
+    ax1.set_xlabel("Epochs")
+    ax1.set_ylabel(label.capitalize())
+    ax1.legend()
+
+    # Create a second x-axis for examples seen
+    ax2 = ax1.twiny()  # Create a second x-axis that shares the same y-axis
+    ax2.plot(examples_seen, train_values, alpha=0)  # Invisible plot for aligning ticks
+    ax2.set_xlabel("Examples seen")
+
+    fig.tight_layout()  # Adjust layout to make room
+    plt.show()
