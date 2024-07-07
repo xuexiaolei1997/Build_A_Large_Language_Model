@@ -207,3 +207,51 @@ def plot_values(epochs_seen, examples_seen, train_values, val_values, label="los
 
     fig.tight_layout()  # Adjust layout to make room
     plt.show()
+
+
+def plot_losses(epochs_seen, tokens_seen, train_losses, val_losses):
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    ax.plot(epochs_seen, train_losses, label="train")
+    ax.plot(epochs_seen, val_losses, linestyle='-.', label="val")
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("Loss")
+    ax.legend()
+
+    ax1 = ax.twiny()
+    ax1.plot(tokens_seen, train_losses, alpha=0)
+    ax1.set_xlabel("Tokens Seen")
+
+    fig.tight_layout()
+    plt.show()
+
+
+def custom_collate_fn(batch, pad_token_id=50256, ignore_index=-100, allowed_max_length=None, device="cpu"):
+    batch_max_length = max(len(entry)+1 for entry in batch)
+
+    inputs_lst, targets_lst = [], []
+
+    for entry in batch:
+        new_entry = entry.copy()
+        new_entry += [pad_token_id]
+
+        padded = new_entry + [pad_token_id] * (batch_max_length - len(new_entry))
+
+        inputs = torch.tensor(padded[:-1])
+        targets = torch.tensor(padded[1:])
+
+        mask = targets == pad_token_id
+        indices = torch.nonzero(mask).squeeze()
+        if indices.numel() > 1:
+            targets[indices[1:]] = ignore_index
+        
+        if allowed_max_length is not None:
+            inputs = inputs[:allowed_max_length]
+            targets = targets[:allowed_max_length]
+        
+        inputs_lst.append(inputs)
+        targets_lst.append(targets)
+    inputs_tensor = torch.stack(inputs_lst).to(device)
+    targets_tensor = torch.stack(targets_lst).to(device)
+
+    return inputs_tensor, targets_tensor
